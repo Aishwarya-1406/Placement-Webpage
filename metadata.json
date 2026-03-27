@@ -1,0 +1,5 @@
+{
+  "name": "College Placement Management System",
+  "description": "A full-stack College Placement Management System with role-based dashboards, AI-powered resume parsing, and student-company matching.",
+  "requestFramePermissions": []
+}

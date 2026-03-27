@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Base user profile for authentication and role management.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "faculty", "student"] },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Extended student profile for placement details.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "department": { "type": "string" },
+        "cgpa": { "type": "number" },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "resumeUrl": { "type": "string", "format": "uri" },
+        "resumeText": { "type": "string", "description": "Extracted text from resume for AI analysis" },
+        "graduationYear": { "type": "number" },
+        "status": { "type": "string", "enum": ["placed", "unplaced", "in-process"] }
+      },
+      "required": ["uid", "department", "cgpa"]
+    },
+    "Company": {
+      "title": "Company",
+      "description": "Company details and eligibility criteria.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "package": { "type": "number", "description": "Annual package in LPA" },
+        "minCgpa": { "type": "number" },
+        "requiredSkills": { "type": "array", "items": { "type": "string" } },
+        "location": { "type": "string" },
+        "deadline": { "type": "string", "format": "date-time" },
+        "logoUrl": { "type": "string", "format": "uri" }
+      },
+      "required": ["name", "package", "minCgpa"]
+    },
+    "Application": {
+      "title": "Application",
+      "description": "Student application for a company.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "companyId": { "type": "string" },
+        "status": { "type": "string", "enum": ["applied", "short-listed", "interviewed", "selected", "rejected"] },
+        "appliedAt": { "type": "string", "format": "date-time" },
+        "feedback": { "type": "string" }
+      },
+      "required": ["studentId", "companyId", "status"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "System notifications for users.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/students/{uid}": { "schema": "Student", "description": "Student academic profiles" },
+    "/companies/{companyId}": { "schema": "Company", "description": "Company listings" },
+    "/applications/{applicationId}": { "schema": "Application", "description": "Student applications" },
+    "/notifications/{notificationId}": { "schema": "Notification", "description": "User notifications" }
+  }
+}

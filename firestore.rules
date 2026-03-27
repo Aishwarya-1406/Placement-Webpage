@@ -1,0 +1,169 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: uid
+    // Fields:
+    //   - uid: string (required) - Firebase Auth UID
+    //   - email: string (required, email format) - User email
+    //   - role: string (required, enum: admin, faculty, student) - User role
+    //   - displayName: string (optional) - User's full name
+    //   - photoURL: string (optional, uri format) - Profile picture URL
+    //   - createdAt: timestamp (optional) - Creation time
+    //
+    // Collection: students
+    // Document ID: uid
+    // Fields:
+    //   - uid: string (required) - Matches user uid
+    //   - department: string (required) - Student's department
+    //   - cgpa: number (required, 0-10) - Student's CGPA
+    //   - skills: list (optional) - Array of skill strings
+    //   - resumeUrl: string (optional, uri format) - Link to resume
+    //   - resumeText: string (optional) - Extracted text from resume
+    //   - graduationYear: number (optional) - Year of graduation
+    //   - status: string (optional, enum: placed, unplaced, in-process) - Placement status
+    //
+    // Collection: companies
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required) - Company name
+    //   - description: string (optional) - Company description
+    //   - package: number (required, positive) - Annual package in LPA
+    //   - minCgpa: number (required, 0-10) - Minimum CGPA required
+    //   - requiredSkills: list (optional) - Array of required skill strings
+    //   - location: string (optional) - Job location
+    //   - deadline: timestamp (optional) - Application deadline
+    //   - logoUrl: string (optional, uri format) - Company logo URL
+    //
+    // Collection: applications
+    // Document ID: auto-generated
+    // Fields:
+    //   - studentId: string (required) - UID of the student
+    //   - companyId: string (required) - ID of the company
+    //   - status: string (required, enum: applied, short-listed, interviewed, selected, rejected)
+    //   - appliedAt: timestamp (required) - Time of application
+    //   - feedback: string (optional) - Feedback from faculty
+    //
+    // Collection: notifications
+    // Document ID: auto-generated
+    // Fields:
+    //   - userId: string (required) - Recipient UID
+    //   - title: string (required) - Notification title
+    //   - message: string (required) - Notification content
+    //   - read: bool (required) - Read status
+    //   - createdAt: timestamp (required) - Time of notification
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        (userExists() && getUserData().role == 'admin') ||
+        (request.auth.token.email == "aishwaryaa1418@gmail.com" && request.auth.token.email_verified == true)
+      );
+    }
+
+    function isFaculty() {
+      return isAuthenticated() && (
+        (userExists() && (getUserData().role == 'faculty' || getUserData().role == 'admin')) ||
+        isAdmin()
+      );
+    }
+
+    function isStudent() {
+      return isAuthenticated() && userExists() && getUserData().role == 'student';
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'email', 'role', 'displayName', 'photoURL', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             data.email == request.auth.token.email &&
+             data.role in ['admin', 'faculty', 'student'];
+    }
+
+    function isValidStudent(data) {
+      return hasOnlyAllowedFields(['uid', 'department', 'cgpa', 'skills', 'resumeUrl', 'resumeText', 'graduationYear', 'status', 'updatedAt']) &&
+             data.uid == request.auth.uid &&
+             data.cgpa is number && data.cgpa >= 0 && data.cgpa <= 10;
+    }
+
+    function isValidCompany(data) {
+      return hasOnlyAllowedFields(['name', 'description', 'package', 'minCgpa', 'requiredSkills', 'location', 'deadline', 'logoUrl', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.package is number && data.package >= 0 &&
+             data.minCgpa is number && data.minCgpa >= 0 && data.minCgpa <= 10;
+    }
+
+    function isValidApplication(data) {
+      return hasOnlyAllowedFields(['studentId', 'companyId', 'status', 'appliedAt', 'feedback']) &&
+             data.studentId == request.auth.uid &&
+             data.status in ['applied', 'short-listed', 'interviewed', 'selected', 'rejected'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /{document=**} {
+      allow read: if true;
+    }
+
+    match /users/{uid} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+    }
+
+    match /students/{uid} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /companies/{companyId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /applications/{applicationId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /notifications/{notificationId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
